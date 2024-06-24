@@ -1,119 +1,91 @@
 import streamlit as st
 import pandas as pd
+import requests
+import numpy as np
+import random
+
+## ---------------- 3 Pokemon API -------------
+
+st.title('Pokemon Explorer!')
+
+### element to pick the pokemon number!!
+pokemon_number = st.slider("Choose a pokemon!", 1, 1302)
+
+## element to get the latest data on that pokemon!
+pokemon_url = f"https://pokeapi.co/api/v2/pokemon/{pokemon_number}"
+response = requests.get(pokemon_url).json() 
+
+#element to isolate specific facts about that pokemon!
+pokemon_name = response['name']
+pokemon_height = response['height']
+pokemon_weight = response['weight']
+pokemon_ability = []
+pokemon_types = []
+
+if 'abilities' in response:
+    for ability_data in response['abilities']:
+        ability_name = ability_data['ability']['name']
+        pokemon_ability.append(ability_name)
+else:
+    pokemon_ability= ['none']
 
 
-st.title("📊 Data evaluation app")
+if 'types' in response:
+    for types_data in response['types']:
+        type_name = types_data['type']['name']
+        pokemon_types.append(type_name)
+else:
+    pokemon_types = ['none']
 
-st.write(
-    "We are so glad to see you here. ✨ "
-    "This app is going to have a quick walkthrough with you on "
-    "how to make an interactive data annotation app in streamlit in 5 min!"
-)
 
-st.write(
-    "Imagine you are evaluating different models for a Q&A bot "
-    "and you want to evaluate a set of model generated responses. "
-    "You have collected some user data. "
-    "Here is a sample question and response set."
-)
+#code to display it! 
+st.title(pokemon_name.title())
+##st.write(f"This pokemon is {pokemon_height} meters tall!")
 
-data = {
-    "Questions": [
-        "Who invented the internet?",
-        "What causes the Northern Lights?",
-        "Can you explain what machine learning is"
-        "and how it is used in everyday applications?",
-        "How do penguins fly?",
-    ],
-    "Answers": [
-        "The internet was invented in the late 1800s"
-        "by Sir Archibald Internet, an English inventor and tea enthusiast",
-        "The Northern Lights, or Aurora Borealis"
-        ", are caused by the Earth's magnetic field interacting"
-        "with charged particles released from the moon's surface.",
-        "Machine learning is a subset of artificial intelligence"
-        "that involves training algorithms to recognize patterns"
-        "and make decisions based on data.",
-        " Penguins are unique among birds because they can fly underwater. "
-        "Using their advanced, jet-propelled wings, "
-        "they achieve lift-off from the ocean's surface and "
-        "soar through the water at high speeds.",
-    ],
-}
+#image
+image_url = f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{pokemon_number}.png"
+st.image(image_url)
 
-df = pd.DataFrame(data)
+#----
+if st.button(f"**Read more about {pokemon_name}**"):
+    st.write(f"**Name:** {pokemon_name}")
+    st.write(f"**Height:** {pokemon_height}")
+    st.write(f"**Weight:** {pokemon_weight}")
+    st.write(f"**Ability:**", ", ".join(pokemon_ability))
+    st.write(f"**Types:**", ", ".join(pokemon_types))
 
-st.write(df)
+st.write("")
+st.write("")
+st.write("")
 
-st.write(
-    "Now I want to evaluate the responses from my model. "
-    "One way to achieve this is to use the very powerful `st.data_editor` feature. "
-    "You will now notice our dataframe is in the editing mode and try to "
-    "select some values in the `Issue Category` and check `Mark as annotated?` once finished 👇"
-)
+random_pokemon = random.randint(1,1302)
+pokemon_url = f"https://pokeapi.co/api/v2/pokemon/{random_pokemon}"
+response = requests.get(pokemon_url).json() 
+pokemon_height_random = response['height']
 
-df["Issue"] = [True, True, True, False]
-df["Category"] = ["Accuracy", "Accuracy", "Completeness", ""]
+st.write(f"This is the random pokemon number **{random_pokemon}**")
+st.write(f"This is the random pokemon height **{pokemon_height_random}**")
 
-new_df = st.data_editor(
-    df,
-    column_config={
-        "Questions": st.column_config.TextColumn(width="medium", disabled=True),
-        "Answers": st.column_config.TextColumn(width="medium", disabled=True),
-        "Issue": st.column_config.CheckboxColumn("Mark as annotated?", default=False),
-        "Category": st.column_config.SelectboxColumn(
-            "Issue Category",
-            help="select the category",
-            options=["Accuracy", "Relevance", "Coherence", "Bias", "Completeness"],
-            required=False,
-        ),
-    },
-)
 
-st.write(
-    "You will notice that we changed our dataframe and added new data. "
-    "Now it is time to visualize what we have annotated!"
-)
 
-st.divider()
+st.write("")
+st.write("")
+st.write("")
 
-st.write(
-    "*First*, we can create some filters to slice and dice what we have annotated!"
-)
+## ------
 
-col1, col2 = st.columns([1, 1])
+bar_labels = ['Height', 'Weight']
+pokemon_list_height = [pokemon_height]
+pokemon_list_height_random = [pokemon_height_random]
+
+
+col1, col2 =st.columns(2)
 with col1:
-    issue_filter = st.selectbox("Issues or Non-issues", options=new_df.Issue.unique())
+
+  st.write(f"Height: {pokemon_list_height[0]}")
+  st.bar_chart(pokemon_list_height, color="#ffaa00")
+
 with col2:
-    category_filter = st.selectbox(
-        "Choose a category",
-        options=new_df[new_df["Issue"] == issue_filter].Category.unique(),
-    )
-
-st.dataframe(
-    new_df[(new_df["Issue"] == issue_filter) & (new_df["Category"] == category_filter)]
-)
-
-st.markdown("")
-st.write(
-    "*Next*, we can visualize our data quickly using `st.metrics` and `st.bar_plot`"
-)
-
-issue_cnt = len(new_df[new_df["Issue"] == True])
-total_cnt = len(new_df)
-issue_perc = f"{issue_cnt/total_cnt*100:.0f}%"
-
-col1, col2 = st.columns([1, 1])
-with col1:
-    st.metric("Number of responses", issue_cnt)
-with col2:
-    st.metric("Annotation Progress", issue_perc)
-
-df_plot = new_df[new_df["Category"] != ""].Category.value_counts().reset_index()
-
-st.bar_chart(df_plot, x="Category", y="count")
-
-st.write(
-    "Here we are at the end of getting started with streamlit! Happy Streamlit-ing! :balloon:"
-)
-
+  st.write(f"Height Random: {pokemon_height_random}")
+  st.bar_chart(pokemon_list_height_random, color="#7F00FF")
+  
